@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 1,
+	"id": "lamps-utils",
+	"version": "${version}",
+	"name": "Lamp's Utils",
+	"description": "A mod that adds some utilities and library stuff (mostly for my mods)",
+	"authors": [
+		"lampyt"
+	],
+	"contact": {
+		"homepage": "https://lamps-dev.dev",
+		"sources": "https://github.com/lamps-dev/lamps-utils"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/lamps-utils/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.lampsutils.LampsUtils"
+		],
+		"client": [
+			"com.lampsutils.LampsUtilsClient"
+		],
+		"fabric-datagen": [
+			"com.lampsutils.LampsUtilsDataGenerator"
+		]
+	},
+	"mixins": [
+		"lamps-utils.mixins.json",
+		{
+			"config": "lamps-utils.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*",
+		"modmenu": ">=3.0.0"
+	}
+}
