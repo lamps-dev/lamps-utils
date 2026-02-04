@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
       - name: setup jdk
@@ -28,3 +30,30 @@ jobs:
         with:
           name: Artifacts
           path: build/libs/
+      
+      - name: generate version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: version
+        run: |
+          # Get the last tag or start at 1.0.0
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          LAST_TAG=${LAST_TAG#v}
+          
+          # Parse version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_TAG"
+          
+          # Increment patch version
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          
+          echo "version=v$NEW_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: create release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          files: build/libs/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
