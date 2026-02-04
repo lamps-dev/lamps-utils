@@ -4,56 +4,90 @@
 # against bad commits.
 
 name: build
-on: [pull_request, push]
+on: 
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Need full history to count commits
+      
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
+      
       - name: setup jdk
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'microsoft'
+      
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
+      
       - name: build
         run: ./gradlew build
+      
       - name: capture build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
           path: build/libs/
       
-      - name: generate version
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: version
+      # Check if we should release (every 5-10 commits)
+      - name: check if release needed
+        id: check_release
         run: |
-          # Get the last tag or start at 1.0.0
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-          LAST_TAG=${LAST_TAG#v}
+          # Get the latest release tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
-          # Parse version
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_TAG"
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags yet, count all commits
+            COMMIT_COUNT=$(git rev-list --count HEAD)
+          else
+            # Count commits since last tag
+            COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
+          fi
           
-          # Increment patch version
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "Commits since last release: $COMMIT_COUNT"
           
-          echo "version=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          # Release if we have 5+ commits (you can change this to 10 if you want)
+          if [ $COMMIT_COUNT -ge 5 ]; then
+            echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
+            echo "✅ Time to drop a release!"
+          else
+            echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
+            echo "❌ Not enough commits yet ($COMMIT_COUNT/5)"
+          fi
       
+      # Get version from commit
+      - name: get version
+        if: steps.check_release.outputs.SHOULD_RELEASE == 'true'
+        id: get_version
+        run: |
+          VERSION="v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+      
+      # Create release only if we have enough commits
       - name: create release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.check_release.outputs.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
           files: build/libs/*.jar
+          generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
