@@ -54,7 +54,10 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
+	// ModMenu is optional — skip on JitPack where Terraformers maven is unavailable
+	if (!System.getenv("JITPACK")) {
+		modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
+	}
 	implementation("com.squareup.okhttp3:okhttp:4.12.0")
 	include(implementation("com.squareup.okhttp3:okhttp:4.12.0"))
 	modImplementation("io.wispforest:owo-lib:${project.owo_version}")
