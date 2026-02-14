@@ -1,3 +1,8 @@
 {
-  "block.lamps-utils.error_block": "Error Block"
+  "block.lamps-utils.error_block": "Error Block",
+
+  "text.config.lamps-utils.option.showHttpWarning": "Show HTTP Warning",
+  "text.config.lamps-utils.option.maxTextLimit": "Max Text Limit",
+
+  "text.config.lamps-utils.title": "Lamp's Utils Config"
 }
