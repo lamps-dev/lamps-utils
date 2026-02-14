@@ -62,7 +62,6 @@ ModCommands.register(dispatcher);
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Required — Core Fabric hooks |
 | [OWO-Lib](https://modrinth.com/mod/owo-lib) | Required — Configuration system |
 | [ModMenu](https://modrinth.com/mod/modmenu) | Optional — In-game config GUI |
-| [OkHttp3](https://square.github.io/okhttp/) | Bundled — HTTP client for `/http` command |
 
 ## Building from Source
 

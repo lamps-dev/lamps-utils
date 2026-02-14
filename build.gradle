@@ -1,6 +1,7 @@
 plugins {
 	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
 	id 'maven-publish'
+	id 'com.modrinth.minotaur' version '2.+'
 }
 
 version = project.mod_version
@@ -58,8 +59,6 @@ dependencies {
 	if (!System.getenv("JITPACK")) {
 		modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
 	}
-	implementation("com.squareup.okhttp3:okhttp:4.12.0")
-	include(implementation("com.squareup.okhttp3:okhttp:4.12.0"))
 	modImplementation("io.wispforest:owo-lib:${project.owo_version}")
 
 	// Ensure the config wrapper gets generated (LampsUtilsConfigWrapper)
@@ -94,6 +93,22 @@ jar {
 
 	from("LICENSE") {
 		rename { "${it}_${inputs.properties.archivesName}"}
+	}
+}
+
+// configure modrinth publishing
+modrinth {
+	token = System.getenv("MODRINTH_TOKEN")
+	projectId = "lamps-utils"
+	versionNumber = project.mod_version
+	versionType = "release"
+	uploadFile = remapJar
+	gameVersions = [project.minecraft_version]
+	loaders = ["fabric"]
+	dependencies {
+		required.project "fabric-api"
+		required.project "owo-lib"
+		optional.project "modmenu"
 	}
 }
 

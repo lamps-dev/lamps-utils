@@ -3,15 +3,13 @@ package com.lampsutils;
 import com.lampsutils.config.ConfigManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
-import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 public class ModCommands {
@@ -38,17 +36,20 @@ public class ModCommands {
                                                         false
                                                 );
 
-                                                OkHttpClient client = new OkHttpClient();
-                                                Request request = new Request.Builder().url(url).build();
+                                                try {
+                                                    HttpClient client = HttpClient.newHttpClient();
+                                                    HttpRequest request = HttpRequest.newBuilder()
+                                                            .uri(URI.create(url))
+                                                            .GET()
+                                                            .build();
+                                                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-                                                try (Response response = client.newCall(request).execute()) {
-                                                    if (response.body() == null) {
+                                                    String body = response.body();
+                                                    if (body == null || body.isEmpty()) {
                                                         context.getSource().sendFailure(Component.literal("Empty response body from: " + url));
                                                         return 0;
                                                     }
 
-                                                    String body = response.body().string();
-                                                    //int maxLength = body.length()/2;
                                                     int limit = ConfigManager.CONFIG.maxTextLimit();
                                                     if (body.length() > limit)
                                                         body = body.substring(0, limit);
@@ -57,7 +58,7 @@ public class ModCommands {
                                                     );
 
                                                     return 1;
-                                                } catch (IOException e) {
+                                                } catch (Exception e) {
                                                     context.getSource().sendFailure(
                                                             Component.literal("Failed to fetch: " + url + " Reason: " + e)
                                                                     .withStyle(style -> style.withColor(0xFF0000))
