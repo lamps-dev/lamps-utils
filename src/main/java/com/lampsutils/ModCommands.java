@@ -37,7 +37,9 @@ public class ModCommands {
                                                 );
 
                                                 try {
-                                                    HttpClient client = HttpClient.newHttpClient();
+                                                    HttpClient client = HttpClient.newBuilder()
+                                                            .followRedirects(HttpClient.Redirect.NORMAL)
+                                                            .build();
                                                     HttpRequest request = HttpRequest.newBuilder()
                                                             .uri(URI.create(url))
                                                             .GET()
