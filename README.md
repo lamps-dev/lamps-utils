@@ -1,4 +1,4 @@
-# Lamp's Utils
+# Lamp's Utils [![](https://jitpack.io/v/lamps-dev/lamps-utils.svg)](https://jitpack.io/#lamps-dev/lamps-utils)
 
 A lightweight utility and library mod for Fabric (Minecraft 1.21.11).
 
