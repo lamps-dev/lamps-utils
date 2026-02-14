@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - master
+      - '1.21.9'
     tags:
       - 'v*'
 
@@ -23,35 +24,45 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Need full history to count commits
-      
+
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
-      
+
       - name: setup jdk
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'microsoft'
-      
+
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
-      
+
       - name: build
         run: ./gradlew build
-      
+
+      - name: get branch name
+        id: branch
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            BRANCH="tag"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "NAME=$BRANCH" >> $GITHUB_OUTPUT
+
       - name: capture build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Artifacts
+          name: Artifacts-${{ steps.branch.outputs.NAME }}
           path: build/libs/
-      
+
       # Check if we should release (every 5-10 commits)
       - name: check if release needed
         id: check_release
         run: |
           # Get the latest release tag
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
+
           if [ -z "$LATEST_TAG" ]; then
             # No tags yet, count all commits
             COMMIT_COUNT=$(git rev-list --count HEAD)
@@ -59,9 +70,9 @@ jobs:
             # Count commits since last tag
             COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
           fi
-          
+
           echo "Commits since last release: $COMMIT_COUNT"
-          
+
           # Release if we have 5+ commits (you can change this to 10 if you want)
           if [ $COMMIT_COUNT -ge 5 ]; then
             echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
@@ -70,14 +81,17 @@ jobs:
             echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
             echo "❌ Not enough commits yet ($COMMIT_COUNT/5)"
           fi
-      
+
       # Get version from tag or commit
       - name: get version
         if: steps.check_release.outputs.SHOULD_RELEASE == 'true' || startsWith(github.ref, 'refs/tags/v')
         id: get_version
         run: |
+          BRANCH="${{ steps.branch.outputs.NAME }}"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
+          elif [[ "$BRANCH" != "master" && "$BRANCH" != "main" ]]; then
+            VERSION="v$(date +'%Y.%m.%d')-${BRANCH}-${GITHUB_SHA::7}"
           else
             VERSION="v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}"
           fi
