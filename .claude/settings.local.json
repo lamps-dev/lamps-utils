@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(git stash:*)",
+      "Bash(gh secret set:*)",
+      "Bash(where:*)",
+      "WebSearch",
+      "WebFetch(domain:maven.wispforest.io)",
+      "WebFetch(domain:fabricmc.net)",
+      "WebFetch(domain:modrinth.com)",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:mvnrepository.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(git cherry-pick:*)"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lamps-utils:block/error_block"
+    }
+  }
+}
