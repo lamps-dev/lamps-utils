@@ -1,16 +1,12 @@
 package com.lampsutils;
 
 import com.lampsutils.config.ConfigManager;
+import com.lampsutils.lib.HttpUtil;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 
 public class ModCommands {
 
@@ -37,16 +33,7 @@ public class ModCommands {
                                                 );
 
                                                 try {
-                                                    HttpClient client = HttpClient.newBuilder()
-                                                            .followRedirects(HttpClient.Redirect.NORMAL)
-                                                            .build();
-                                                    HttpRequest request = HttpRequest.newBuilder()
-                                                            .uri(URI.create(url))
-                                                            .GET()
-                                                            .build();
-                                                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-                                                    String body = response.body();
+                                                    String body = HttpUtil.get(url);
                                                     if (body == null || body.isEmpty()) {
                                                         context.getSource().sendFailure(Component.literal("Empty response body from: " + url));
                                                         return 0;
