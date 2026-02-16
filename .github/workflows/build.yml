@@ -1,7 +1,9 @@
 # Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
+# and submitted pull request. Releases are created either automatically every
+# 5+ commits (patch bump) or manually by pushing a trigger tag:
+#   git tag release-patch && git push origin release-patch
+#   git tag release-minor && git push origin release-minor
+#   git tag release-major && git push origin release-major
 
 name: build
 on:
@@ -12,7 +14,9 @@ on:
       - master
       - '1.21.9'
     tags:
-      - 'v*'
+      - 'release-patch'
+      - 'release-minor'
+      - 'release-major'
 
 jobs:
   build:
@@ -23,7 +27,7 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history to count commits
+          fetch-depth: 0  # Need full history to count commits and find tags
 
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -44,7 +48,11 @@ jobs:
         id: branch
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            BRANCH="tag"
+            # For tags, figure out which branch they were pushed from
+            BRANCH=$(git branch -r --contains HEAD | grep -E 'origin/(master|main|1\.21\..*)' | head -1 | sed 's|origin/||' | xargs)
+            if [ -z "$BRANCH" ]; then
+              BRANCH="unknown"
+            fi
           else
             BRANCH="${GITHUB_REF#refs/heads/}"
           fi
@@ -56,51 +64,91 @@ jobs:
           name: Artifacts-${{ steps.branch.outputs.NAME }}
           path: build/libs/
 
-      # Check if we should release (every 5-10 commits)
+      # Determine if we should release and what version bump type
       - name: check if release needed
         id: check_release
         run: |
-          # Get the latest release tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          BUMP_TYPE="none"
 
-          if [ -z "$LATEST_TAG" ]; then
-            # No tags yet, count all commits
-            COMMIT_COUNT=$(git rev-list --count HEAD)
+          # Check if this is a manual release trigger tag
+          if [[ "$TAG_REF" == "release-patch" ]]; then
+            BUMP_TYPE="patch"
+          elif [[ "$TAG_REF" == "release-minor" ]]; then
+            BUMP_TYPE="minor"
+          elif [[ "$TAG_REF" == "release-major" ]]; then
+            BUMP_TYPE="major"
           else
-            # Count commits since last tag
-            COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
+            # Auto-release check: every 5+ commits = patch bump
+            LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+            if [ -z "$LATEST_TAG" ]; then
+              COMMIT_COUNT=$(git rev-list --count HEAD)
+            else
+              COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
+            fi
+            echo "Commits since last release: $COMMIT_COUNT"
+            if [ $COMMIT_COUNT -ge 5 ]; then
+              BUMP_TYPE="patch"
+              echo "✅ 5+ commits, auto-releasing with patch bump"
+            else
+              echo "❌ Not enough commits yet ($COMMIT_COUNT/5)"
+            fi
           fi
 
-          echo "Commits since last release: $COMMIT_COUNT"
-
-          # Release if we have 5+ commits (you can change this to 10 if you want)
-          if [ $COMMIT_COUNT -ge 5 ]; then
+          echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          if [ "$BUMP_TYPE" != "none" ]; then
             echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
-            echo "✅ Time to drop a release!"
           else
             echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
-            echo "❌ Not enough commits yet ($COMMIT_COUNT/5)"
           fi
 
-      # Get version from tag or commit
-      - name: get version
-        if: steps.check_release.outputs.SHOULD_RELEASE == 'true' || startsWith(github.ref, 'refs/tags/v')
+      # Calculate the next version by bumping the latest tag
+      - name: calculate next version
+        if: steps.check_release.outputs.SHOULD_RELEASE == 'true'
         id: get_version
         run: |
+          BUMP="${{ steps.check_release.outputs.BUMP_TYPE }}"
           BRANCH="${{ steps.branch.outputs.NAME }}"
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
-          elif [[ "$BRANCH" != "master" && "$BRANCH" != "main" ]]; then
-            VERSION="v$(date +'%Y.%m.%d')-${BRANCH}-${GITHUB_SHA::7}"
-          else
-            VERSION="v$(date +'%Y.%m.%d')-${GITHUB_SHA::7}"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
 
-      # Create release if enough commits OR if a version tag was pushed
+          # Find the latest semver tag (v*.*.*)
+          LATEST=$(git tag -l 'v*.*.*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            LATEST="v1.5.0"
+          fi
+
+          # Parse major.minor.patch
+          VERSION="${LATEST#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+          # Bump
+          if [ "$BUMP" == "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP" == "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+
+          # Append branch suffix for non-main branches
+          if [[ "$BRANCH" != "master" && "$BRANCH" != "main" && "$BRANCH" != "unknown" ]]; then
+            RELEASE_NAME="${NEW_VERSION}-${BRANCH}"
+          else
+            RELEASE_NAME="${NEW_VERSION}"
+          fi
+
+          echo "VERSION=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "Releasing: $RELEASE_NAME (bumped $BUMP from $LATEST)"
+
+      # Create the version tag and GitHub release
       - name: create release
-        if: steps.check_release.outputs.SHOULD_RELEASE == 'true' || startsWith(github.ref, 'refs/tags/v')
+        if: steps.check_release.outputs.SHOULD_RELEASE == 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.VERSION }}
@@ -112,9 +160,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Clean up the trigger tag so it can be reused
+      - name: delete trigger tag
+        if: startsWith(github.ref, 'refs/tags/release-')
+        run: git push origin :refs/tags/${GITHUB_REF#refs/tags/}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Publish to Modrinth alongside the GitHub release
       - name: publish to modrinth
-        if: steps.check_release.outputs.SHOULD_RELEASE == 'true' || startsWith(github.ref, 'refs/tags/v')
+        if: steps.check_release.outputs.SHOULD_RELEASE == 'true'
         run: ./gradlew modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
