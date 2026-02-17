@@ -38,6 +38,7 @@
 		"java": ">=21",
 		"fabric-api": "*",
 		"owo-lib": "*",
+		"balm": "*",
 		"modmenu": "*"
 	}
 }
