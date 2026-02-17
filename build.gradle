@@ -26,6 +26,13 @@ repositories {
 		name = "wispforest"
 		url = "https://maven.wispforest.io/"
 	}
+	maven {
+		name = "TwelveIterations"
+		url = "https://maven.twelveiterations.com/repository/maven-public/"
+		content {
+			includeGroup "net.blay09.mods"
+		}
+	}
 	maven { url 'https://jitpack.io' }
 }
 
@@ -60,6 +67,7 @@ dependencies {
 		modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
 	}
 	modImplementation("io.wispforest:owo-lib:${project.owo_version}")
+	modImplementation("net.blay09.mods:balm-fabric:${project.balm_version}")
 
 	// Ensure the config wrapper gets generated (LampsUtilsConfigWrapper)
 	annotationProcessor("io.wispforest:owo-lib:${project.owo_version}")
@@ -108,6 +116,7 @@ modrinth {
 	dependencies {
 		required.project "fabric-api"
 		required.project "owo-lib"
+		required.project "balm"
 		optional.project "modmenu"
 	}
 }
