@@ -9,6 +9,8 @@ import static com.lampsutils.LampsUtils.MOD_ID;
 public class LampsUtilsConfig {
     public boolean showHttpWarning = true;
 
+    public boolean httpEnabled = true;
+
     @RangeConstraint(min = 100, max = 5000)
     public int maxTextLimit = 300;
 }
