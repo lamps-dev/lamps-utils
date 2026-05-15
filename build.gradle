@@ -67,7 +67,7 @@ dependencies {
 		modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}")
 	}
 	modImplementation("io.wispforest:owo-lib:${project.owo_version}")
-	modImplementation("net.blay09.mods:balm-fabric:${project.balm_version}")
+	// modImplementation("net.blay09.mods:balm-fabric:${project.balm_version}")
 
 	// Ensure the config wrapper gets generated (LampsUtilsConfigWrapper)
 	annotationProcessor("io.wispforest:owo-lib:${project.owo_version}")

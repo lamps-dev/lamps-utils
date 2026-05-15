@@ -5,7 +5,7 @@ A lightweight utility and library mod for Fabric (Minecraft 1.21.11).
 ## Features
 
 - **Error Block** — A decorative/utility block registered under `lamps-utils:error_block`
-- **HTTP Command** — `/http get <url>` fetches data from a URL and displays it in chat, with configurable safety warnings and text length limits
+- **HTTP Command** — `/http get <url>` and `/curl <url>` fetches data from a URL and displays it in chat, with configurable safety warnings and text length limits
 - **Config System** — In-game configuration via ModMenu powered by OWO-Lib
 
 ## Configuration
@@ -14,7 +14,7 @@ A lightweight utility and library mod for Fabric (Minecraft 1.21.11).
 |--------|---------|-------------|
 | `showHttpWarning` | `true` | Show a security warning when using the HTTP command |
 | `maxTextLimit` | `300` | Max characters displayed from HTTP responses (100–5000) |
-
+| `httpEnabled` | `300` | To enable the `/http` and `/curl` commands |
 ## Using as a Library
 
 Lamp's Utils is available via [JitPack](https://jitpack.io/#lamps-dev/lamps-utils).
