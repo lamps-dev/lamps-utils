@@ -1,6 +1,6 @@
 # Automatically build the project and run any configured tests for every push
-# and submitted pull request. Releases are created either automatically every
-# 5+ commits (patch bump) or manually by pushing a trigger tag:
+# and submitted pull request. Releases are created manually by pushing a
+# trigger tag:
 #   git tag release-patch && git push origin release-patch
 #   git tag release-minor && git push origin release-minor
 #   git tag release-major && git push origin release-major
@@ -27,7 +27,7 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history to count commits and find tags
+          fetch-depth: 0  # Need full history to find tags
 
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -64,42 +64,28 @@ jobs:
           name: Artifacts-${{ steps.branch.outputs.NAME }}
           path: build/libs/
 
-      # Determine if we should release and what version bump type
+      # Determine release bump type from the trigger tag (manual only)
       - name: check if release needed
         id: check_release
         run: |
           TAG_REF="${GITHUB_REF#refs/tags/}"
           BUMP_TYPE="none"
 
-          # Check if this is a manual release trigger tag
           if [[ "$TAG_REF" == "release-patch" ]]; then
             BUMP_TYPE="patch"
           elif [[ "$TAG_REF" == "release-minor" ]]; then
             BUMP_TYPE="minor"
           elif [[ "$TAG_REF" == "release-major" ]]; then
             BUMP_TYPE="major"
-          else
-            # Auto-release check: every 5+ commits = patch bump
-            LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
-            if [ -z "$LATEST_TAG" ]; then
-              COMMIT_COUNT=$(git rev-list --count HEAD)
-            else
-              COMMIT_COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
-            fi
-            echo "Commits since last release: $COMMIT_COUNT"
-            if [ $COMMIT_COUNT -ge 5 ]; then
-              BUMP_TYPE="patch"
-              echo "✅ 5+ commits, auto-releasing with patch bump"
-            else
-              echo "❌ Not enough commits yet ($COMMIT_COUNT/5)"
-            fi
           fi
 
           echo "BUMP_TYPE=$BUMP_TYPE" >> $GITHUB_OUTPUT
           if [ "$BUMP_TYPE" != "none" ]; then
             echo "SHOULD_RELEASE=true" >> $GITHUB_OUTPUT
+            echo "✅ Manual release triggered: $BUMP_TYPE bump"
           else
             echo "SHOULD_RELEASE=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No release tag, just building"
           fi
 
       # Calculate the next version by bumping the latest tag
